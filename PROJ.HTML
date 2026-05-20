@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Camera Access</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 900px;
+    }
+
+    h1 {
+      margin-bottom: 16px;
+      font-size: 24px;
+    }
+
+    video, canvas, img {
+      width: 100%;
+      max-width: 100%;
+      border-radius: 16px;
+      background: #000;
+      margin-bottom: 12px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    button, select {
+      padding: 12px 16px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    button {
+      cursor: pointer;
+      background: #fff;
+      color: #111;
+      font-weight: 600;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .note {
+      font-size: 14px;
+      color: #ccc;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .preview-box {
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Camera Preview & Capture</h1>
+
+    <div class="note">
+      This uses the browser camera API. It works on localhost or HTTPS.
+      For a phone, open this page in the phone browser and allow camera permission.
+    </div>
+
+    <div class="controls">
+      <select id="cameraSelect">
+        <option value="user">Front Camera</option>
+        <option value="environment">Back Camera</option>
+      </select>
+
+      <button id="startBtn">Start Camera</button>
+      <button id="captureBtn">Capture Image</button>
+      <button id="stopBtn">Stop Camera</button>
+      <button id="downloadBtn">Download Image</button>
+    </div>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <div class="preview-box">
+      <h3>Captured Image</h3>
+      <img id="capturedImage" alt="Captured result will appear here" />
+    </div>
+  </div>
+
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const capturedImage = document.getElementById("capturedImage");
+    const startBtn = document.getElementById("startBtn");
+    const captureBtn = document.getElementById("captureBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const cameraSelect = document.getElementById("cameraSelect");
+
+    let stream = null;
+
+    async function startCamera() {
+      try {
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+
+        const facingMode = cameraSelect.value;
+
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: facingMode
+          },
+          audio: false
+        });
+
+        video.srcObject = stream;
+      } catch (err) {
+        alert("Camera error: " + err.message);
+        console.error(err);
+      }
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+        video.srcObject = null;
+      }
+    }
+
+    function captureImage() {
+      if (!video.videoWidth || !video.videoHeight) {
+        alert("Camera is not ready yet.");
+        return;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const imageData = canvas.toDataURL("image/jpeg", 0.92);
+      capturedImage.src = imageData;
+    }
+
+    function downloadImage() {
+      if (!capturedImage.src) {
+        alert("No image captured yet.");
+        return;
+      }
+
+      const link = document.createElement("a");
+      link.href = capturedImage.src;
+      link.download = "captured-image.jpg";
+      link.click();
+    }
+
+    startBtn.addEventListener("click", startCamera);
+    stopBtn.addEventListener("click", stopCamera);
+    captureBtn.addEventListener("click", captureImage);
+    downloadBtn.addEventListener("click", downloadImage);
+
+    cameraSelect.addEventListener("change", async () => {
+      if (stream) {
+        await startCamera();
+      }
+    });
+  </script>
+</body>
+</html>
